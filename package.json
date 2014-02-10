@@ -1,0 +1,12 @@
+{
+  "name": "flapping-sabazusi",
+  "version": "0.0.1",
+  "description": "game on browser",
+  "author": "ichiko@github.com",
+  "dependencies": {
+    "grunt": "~0.4.2",
+    "grunt-bower-task": "~0.3.4",
+    "grunt-contrib-coffee": "~0.10.0",
+    "grunt-contrib-watch": "~0.5.3"
+  }
+}
