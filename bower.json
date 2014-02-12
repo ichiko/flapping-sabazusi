@@ -13,6 +13,7 @@
   ],
   "dependencies": {
     "pixi.js": "~1.4.3",
-    "jquery": "~2.1.0"
+    "jquery": "~2.1.0",
+    "box2dweb": "*"
   }
 }
