@@ -1,15 +1,16 @@
 # flap.coffee
 
-# Box2Dに対するスケール(m/px)
-SCALE = 1 / 30
+# 1mを何pxで表すか
+physScale = 32
 
-stepTime = 1 / 30
-stepVelocityIterations = 10
+fps = 40
+stepTime = 1 / fps
+stepVelocityIterations = 1
 stepPositionIterations = 10
 
 # === Box2D ===
 
-# redefine class
+# redefine classes
 b2Vec2 = Box2D.Common.Math.b2Vec2
 b2BodyDef = Box2D.Dynamics.b2BodyDef
 b2Body = Box2D.Dynamics.b2Body
@@ -23,58 +24,52 @@ b2DebugDraw = Box2D.Dynamics.b2DebugDraw
 
 world = new b2World(new b2Vec2(0, 9.8), true)
 
-createSabazusi = () ->
-	# フィクスチャー定義：物体の密度、摩擦、反発
-	boxFixDef = new b2FixtureDef()
-	boxFixDef.density = 1.0
-	boxFixDef.friction = 0.5
-	boxFixDef.restitution = 0.5
+# フィクスチャー定義：物体の密度、摩擦、反発
+fixtureDef = new b2FixtureDef()
+fixtureDef.density = 1.0
+fixtureDef.friction = 0.5
+fixtureDef.restitution = 0.5
 
-	# シェープ定義：形状(ここでは、一辺1m(30px)の正方形)
-	boxShape = new b2PolygonShape()
-	boxShape.SetAsBox(30 * SCALE, 30 * SCALE)
+createSabazusi = (pWorld, pFixtureDef) ->
+	bodyDef = new b2BodyDef()
+	bodyDef.type = b2Body.b2_dynamicBody
+	bodyDef.position.Set(200 / physScale, 0)
 
-	boxFixDef.shape = boxShape
+	pFixtureDef.shape = new b2PolygonShape()
+	# set half of width, height
+	pFixtureDef.shape.SetAsBox(32 / physScale / 2, 32 / physScale / 2)
 
-	# ボディ定義：座標、傾き、静動
-	boxBodyDef = new b2BodyDef()
-	boxBodyDef.position.Set(0, 0)
-	boxBodyDef.type = b2Body.b2_dynamicBody
-
-	# ボディをworldに生成し、フィクスチャーを追加する
-	boxBody = world.CreateBody(boxBodyDef)
-	boxBody.CreateFixture(boxFixDef)
+	boxBody = pWorld.CreateBody(bodyDef)
+	boxBody.CreateFixture(pFixtureDef)
 
 	return boxBody
 
-createGround = () ->
-	# 地面
-	groundFixDef = new b2FixtureDef()
-	#groundFixDef.density = 1.0
-	#groundFixDef.friction = 0.5
-	#groundFixDef.restitution = 0.5
+createGround = (pWorld, pFixtureDef) ->
+	bodyDef = new b2BodyDef()
+	bodyDef.type = b2Body.b2_staticBody
+	bodyDef.position.Set(200 / physScale, 250 / physScale)
 
-	groundShape = new b2PolygonShape()
-	#groundShape.SetAsBox(300 * SCALE, 40 * SCALE)
-	groundShape.SetAsBox(30 * SCALE, 30 * SCALE)
+	pFixtureDef.shape = new b2PolygonShape()
+	# set half of width, height
+	pFixtureDef.shape.SetAsBox(200 / physScale / 2, 40 / physScale / 2)
 
-	groundFixDef.shape = groundShape
-
-	groundBodyDef = new b2BodyDef()
-	#groundBodyDef.position.Set(200 * SCALE, 250 * SCALE)
-	groundBodyDef.position.Set(200 * SCALE, 100 * SCALE)
-	groundBodyDef.type = b2BodyDef.b2_staticBody
-
-	groundBody = world.CreateBody(groundBodyDef)
-	groundBody.CreateFixture(groundFixDef)
+	groundBody = pWorld.CreateBody(bodyDef)
+	groundBody.CreateFixture(pFixtureDef)
 
 	return groundBody
 
-# positionで設定されるのは、bodyの中心座標?
-boxBody = createSabazusi()
-boxBody.SetPosition(new b2Vec2(200 * SCALE, 0 * SCALE))
-groundBody = createGround()
-#groundBody.SetPosition(new b2Vec2(200 * SCALE, 100 * SCALE))
+boxBody = createSabazusi(world, fixtureDef)
+groundBody = createGround(world, fixtureDef)
+
+# debug用表示の設定
+debugDraw = new b2DebugDraw();          # Box2D.Dynamics.b2DebugDraw
+debugDraw.SetSprite($("#box2ddebug")[0].getContext("2d")); # canvas 2dのcontextを設定
+debugDraw.SetDrawScale(physScale);          # 表示のスケール(1メートル、何pixelか?)
+debugDraw.SetFillAlpha(0.5);                # 塗りつぶし透明度を0.5に
+debugDraw.SetLineThickness(1.0);            # lineの太さを1.0に
+debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit); # シェイプとジョイントを表示、他に
+# e_aabbBit,e_pairBit,e_centerOfMassBit,e_controllerBitを設定可能
+world.SetDebugDraw(debugDraw);              # worldにdebug用表示の設定
 
 # === PIXI ===
 
@@ -93,8 +88,8 @@ sabazusi.anchor.x = 0.5
 sabazusi.anchor.y = 0.5
 
 pos = boxBody.GetPosition()
-sabazusi.position.x = pos.x / SCALE
-sabazusi.position.y = pos.y / SCALE
+sabazusi.position.x = pos.x * physScale
+sabazusi.position.y = pos.y * physScale
 
 stage.addChild(sabazusi)
 
@@ -105,8 +100,8 @@ graphics.lineStyle(1, 0xffd900, 1)
 
 graphics.moveTo(0, 0)
 graphics.lineTo(0, 40)
-graphics.lineTo(300, 40)
-graphics.lineTo(300, 0)
+graphics.lineTo(200, 40)
+graphics.lineTo(200, 0)
 graphics.lineTo(0, 0)
 graphics.endFill()
 
@@ -115,18 +110,29 @@ stage.addChild(graphics)
 animate = () ->
 	requestAnimFrame( animate )
 
-	world.Step(stepTime)
+	# worldの更新、経過時間、速度計算の内部繰り返し回数、位置計算の内部繰り返し回数
+	#world.Step(stepTime, stepVelocityIterations, stepPositionIterations)
+
 	pos = boxBody.GetPosition();
-	sabazusi.position.x = pos.x / SCALE
-	sabazusi.position.y = pos.y / SCALE
+	sabazusi.position.x = pos.x * physScale
+	sabazusi.position.y = pos.y * physScale
 	sabazusi.rotation = boxBody.GetAngle()
 
 	# anchor = left, top
 	pos = groundBody.GetPosition()
-	graphics.position.x = pos.x / SCALE - 300 / 2
-	graphics.position.y = pos.y / SCALE - 40 / 2
-	graphics.rotation = groundBody.GetAngle()
+	graphics.position.x = pos.x * physScale - 100
+	graphics.position.y = pos.y * physScale - 20
+	#graphics.rotation = groundBody.GetAngle()
+
+	#world.ClearForces()
 
 	renderer.render(stage)
 
 requestAnimFrame( animate )
+
+update = () ->
+	world.Step(stepTime, stepVelocityIterations, stepPositionIterations)
+	world.DrawDebugData()
+	world.ClearForces()
+
+window.setInterval(update, 1000 / fps)
