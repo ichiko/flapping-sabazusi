@@ -8,6 +8,9 @@ stepTime = 1 / fps
 stepVelocityIterations = 1
 stepPositionIterations = 10
 
+KEYCODE_LEFT = 37
+KEYCODE_RIGHT = 39
+
 # === Box2D ===
 
 # redefine classes
@@ -21,6 +24,7 @@ b2MassData = Box2D.Collision.Shapes.b2MassData
 b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape
 b2CircleShape = Box2D.Collision.Shapes.b2CircleShape
 b2DebugDraw = Box2D.Dynamics.b2DebugDraw
+b2MouseJointDef =  Box2D.Dynamics.Joints.b2MouseJointDef
 
 world = new b2World(new b2Vec2(0, 9.8), true)
 
@@ -58,7 +62,7 @@ createGround = (pWorld, pFixtureDef) ->
 
 	return groundBody
 
-boxBody = createSabazusi(world, fixtureDef)
+sabazusiBody= createSabazusi(world, fixtureDef)
 groundBody = createGround(world, fixtureDef)
 
 # debug用表示の設定
@@ -87,7 +91,7 @@ sabazusi = new PIXI.Sprite(texture)
 sabazusi.anchor.x = 0.5
 sabazusi.anchor.y = 0.5
 
-pos = boxBody.GetPosition()
+pos = sabazusiBody.GetPosition()
 sabazusi.position.x = pos.x * physScale
 sabazusi.position.y = pos.y * physScale
 
@@ -107,16 +111,72 @@ graphics.endFill()
 
 stage.addChild(graphics)
 
+mouseX = mouseY = undefined
+mouseXphys = mouseYphys = undefined
+isMouseDown = false
+mouseJoint = null
+keyCode = 0
+
+getElementPosition = (element) ->
+	return {x: element.offsetLeft, y: element.offsetTop}
+
+canvasPosition = getElementPosition($('#pixistage')[0])
+
+handleMouseDown = (e) ->
+	console.log "mouseDown", e.clientX, e.clientY
+	isMouseDown = true
+	handleMouseMove(e)
+	$('body').mousemove(handleMouseMove)
+
+handleMouseUp = (e) ->
+	console.log "mouseUp", e.clientX, e.clientY
+	$('body').unbind("mousemove", handleMouseMove)
+	isMouseDown = false
+	mouseX = mouseY = undefined
+	mouseXphys = mouseYphys = undefined
+
+handleMouseMove = (e) ->
+	console.log "mouseMove", e.clientX, e.clientY
+	mouseX = e.clientX - canvasPosition.x
+	mouseY = e.clientY - canvasPosition.y
+	mouseXphys = mouseX / physScale
+	mouseYphys = mouseY / physScale
+
+$('body').mousedown(handleMouseDown)
+$('body').mouseup(handleMouseUp)
+
 animate = () ->
 	requestAnimFrame( animate )
+
+	if (isMouseDown && (! mouseJoint))
+		console.log "loop isMouseDown", mouseX, mouseY, mouseXphys, mouseYphys
+		mouseJointDef = new b2MouseJointDef()
+		mouseJointDef.bodyA = world.GetGroundBody()
+		mouseJointDef.bodyB = sabazusiBody
+		# ベクトルの開始座標を指定する
+		#mouseJointDef.target.Set(mouseXphys, mouseYphys)
+		pos = sabazusiBody.GetPosition()
+		mouseJointDef.target.Set(pos.x, pos.y)
+		mouseJointDef.collideConnected = true
+		mouseJointDef.maxForce = 100.0 * sabazusiBody.GetMass()
+		mouseJoint = world.CreateJoint(mouseJointDef)
+		sabazusiBody.SetAwake(true)
+
+	if (mouseJoint)
+		if (isMouseDown)
+			# ベクトルの終端を指定する
+			mouseJoint.SetTarget(new b2Vec2(mouseXphys, mouseYphys))
+		else
+			world.DestroyJoint(mouseJoint)
+			mouseJoint = null
 
 	# worldの更新、経過時間、速度計算の内部繰り返し回数、位置計算の内部繰り返し回数
 	#world.Step(stepTime, stepVelocityIterations, stepPositionIterations)
 
-	pos = boxBody.GetPosition();
+	pos = sabazusiBody.GetPosition();
 	sabazusi.position.x = pos.x * physScale
 	sabazusi.position.y = pos.y * physScale
-	sabazusi.rotation = boxBody.GetAngle()
+	sabazusi.rotation = sabazusiBody.GetAngle()
 
 	# anchor = left, top
 	pos = groundBody.GetPosition()
@@ -134,5 +194,6 @@ update = () ->
 	world.Step(stepTime, stepVelocityIterations, stepPositionIterations)
 	world.DrawDebugData()
 	world.ClearForces()
+
 
 window.setInterval(update, 1000 / fps)
