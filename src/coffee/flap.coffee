@@ -116,6 +116,8 @@ mouseXphys = mouseYphys = undefined
 isMouseDown = false
 mouseJoint = null
 keyCode = 0
+jampingTick = 0
+inputTick = 0
 
 getElementPosition = (element) ->
 	return {x: element.offsetLeft, y: element.offsetTop}
@@ -142,33 +144,50 @@ handleMouseMove = (e) ->
 	mouseXphys = mouseX / physScale
 	mouseYphys = mouseY / physScale
 
+handleKeyDown = (e) ->
+	console.log e.keyCode
+	keyCode = e.keyCode
+
 $('body').mousedown(handleMouseDown)
 $('body').mouseup(handleMouseUp)
+$('body').keydown(handleKeyDown)
 
 animate = () ->
 	requestAnimFrame( animate )
 
-	if (isMouseDown && (! mouseJoint))
-		console.log "loop isMouseDown", mouseX, mouseY, mouseXphys, mouseYphys
+	console.log jampingTick, keyCode, mouseJoint
+	if (inputTick == 0 && jampingTick == 0 && keyCode > 0 && (! mouseJoint))
+		jampingTick = fps * 0.2
+		inputTick = fps
+
+		pos = sabazusiBody.GetPosition()
+		console.log "loop keyCode is set", pos.x, pos.y
 		mouseJointDef = new b2MouseJointDef()
 		mouseJointDef.bodyA = world.GetGroundBody()
 		mouseJointDef.bodyB = sabazusiBody
 		# ベクトルの開始座標を指定する
-		#mouseJointDef.target.Set(mouseXphys, mouseYphys)
-		pos = sabazusiBody.GetPosition()
 		mouseJointDef.target.Set(pos.x, pos.y)
 		mouseJointDef.collideConnected = true
-		mouseJointDef.maxForce = 100.0 * sabazusiBody.GetMass()
+		mouseJointDef.maxForce = 80.0 * sabazusiBody.GetMass()
 		mouseJoint = world.CreateJoint(mouseJointDef)
 		sabazusiBody.SetAwake(true)
 
-	if (mouseJoint)
-		if (isMouseDown)
-			# ベクトルの終端を指定する
-			mouseJoint.SetTarget(new b2Vec2(mouseXphys, mouseYphys))
-		else
+		switch keyCode
+			when KEYCODE_LEFT
+				mouseJoint.SetTarget(new b2Vec2(pos.x - 0.2, pos.y - 2))
+			when KEYCODE_RIGHT
+				mouseJoint.SetTarget(new b2Vec2(pos.x + 0.2, pos.y - 2))
+
+	else if (mouseJoint)
+		if (jampingTick == 0)
 			world.DestroyJoint(mouseJoint)
 			mouseJoint = null
+			keyCode = 0
+
+	if (jampingTick > 0)
+		jampingTick--
+	if (inputTick > 0)
+		inputTick--
 
 	# worldの更新、経過時間、速度計算の内部繰り返し回数、位置計算の内部繰り返し回数
 	#world.Step(stepTime, stepVelocityIterations, stepPositionIterations)
