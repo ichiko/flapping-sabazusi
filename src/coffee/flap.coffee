@@ -24,11 +24,12 @@ b2Body = Box2D.Dynamics.b2Body
 b2FixtureDef = Box2D.Dynamics.b2FixtureDef
 b2Fixture = Box2D.Dynamics.b2Fixture
 b2World = Box2D.Dynamics.b2World
-b2MassData = Box2D.Collision.Shapes.b2MassData
+#b2MassData = Box2D.Collision.Shapes.b2MassData
 b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape
-b2CircleShape = Box2D.Collision.Shapes.b2CircleShape
+#b2CircleShape = Box2D.Collision.Shapes.b2CircleShape
 b2DebugDraw = Box2D.Dynamics.b2DebugDraw
 b2MouseJointDef =  Box2D.Dynamics.Joints.b2MouseJointDef
+b2Listener = Box2D.Dynamics.b2ContactListener
 
 world = new b2World(new b2Vec2(0, 9.8), true)
 
@@ -38,36 +39,43 @@ fixtureDef.density = 1.0
 fixtureDef.friction = 0.5
 fixtureDef.restitution = 0.5
 
-createSabazusi = (pWorld, pFixtureDef) ->
+createBoxBody = (pWorld, pFixtureDef, pBodyDef, pWidth, pHeight) ->
+	pFixtureDef.shape = new b2PolygonShape()
+	# set half of width, height
+	pFixtureDef.shape.SetAsBox(pWidth / physScale / 2, pHeight / physScale / 2)
+
+	body = pWorld.CreateBody(pBodyDef)
+	body.CreateFixture(pFixtureDef)
+
+	return body
+
+createDynamicBoxBody = (pWorld, pFixtureDef, pX, pY, pWidth, pHeight) ->
 	bodyDef = new b2BodyDef()
 	bodyDef.type = b2Body.b2_dynamicBody
-	bodyDef.position.Set(200 / physScale, 0)
+	bodyDef.position.Set(pX / physScale, pY / physScale)
 
-	pFixtureDef.shape = new b2PolygonShape()
-	# set half of width, height
-	pFixtureDef.shape.SetAsBox(32 / physScale / 2, 32 / physScale / 2)
+	return createBoxBody(pWorld, pFixtureDef, bodyDef, pWidth, pHeight)
 
-	boxBody = pWorld.CreateBody(bodyDef)
-	boxBody.CreateFixture(pFixtureDef)
-
-	return boxBody
-
-createGround = (pWorld, pFixtureDef) ->
+createStaticBoxBody = (pWorld, pFixtureDef, pX, pY, pWidth, pHeight) ->
 	bodyDef = new b2BodyDef()
 	bodyDef.type = b2Body.b2_staticBody
-	bodyDef.position.Set(200 / physScale, 250 / physScale)
+	bodyDef.position.Set(pX / physScale, pY / physScale)
 
-	pFixtureDef.shape = new b2PolygonShape()
-	# set half of width, height
-	pFixtureDef.shape.SetAsBox(200 / physScale / 2, 40 / physScale / 2)
+	return createBoxBody(pWorld, pFixtureDef, bodyDef, pWidth, pHeight)
 
-	groundBody = pWorld.CreateBody(bodyDef)
-	groundBody.CreateFixture(pFixtureDef)
+createSabazusi = (pWorld, pFixtureDef) ->
+	return createDynamicBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH / 2, 32, 32, 32)
 
-	return groundBody
+createGround = (pWorld, pFixtureDef) ->
+	return createStaticBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH / 2, 250, 200, 40)
 
+createFrameObject = (pWorld, pFixtureDef) ->
+	createStaticBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH / 2, 0, WINDOW_WIDTH, 10)
+	createStaticBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH / 2, WINDOW_HEIGHT, WINDOW_WIDTH, 10)
+
+createFrameObject(world, fixtureDef)
 sabazusiBody= createSabazusi(world, fixtureDef)
-groundBody = createGround(world, fixtureDef)
+#groundBody = createGround(world, fixtureDef)
 
 # debug用表示の設定
 debugDraw = new b2DebugDraw();          # Box2D.Dynamics.b2DebugDraw
@@ -100,20 +108,6 @@ sabazusi.position.x = pos.x * physScale
 sabazusi.position.y = pos.y * physScale
 
 stage.addChild(sabazusi)
-
-graphics = new PIXI.Graphics()
-
-graphics.beginFill(0xff3300)
-graphics.lineStyle(1, 0xffd900, 1)
-
-graphics.moveTo(0, 0)
-graphics.lineTo(0, 40)
-graphics.lineTo(200, 40)
-graphics.lineTo(200, 0)
-graphics.lineTo(0, 0)
-graphics.endFill()
-
-stage.addChild(graphics)
 
 mouseX = mouseY = undefined
 mouseXphys = mouseYphys = undefined
@@ -203,23 +197,9 @@ animate = () ->
 	sabazusi.position.y = pos.y * physScale
 	sabazusi.rotation = sabazusiBody.GetAngle()
 
-	# anchor = left, top
-	pos = groundBody.GetPosition()
-	graphics.position.x = pos.x * physScale - 100
-	graphics.position.y = pos.y * physScale - 20
-	#graphics.rotation = groundBody.GetAngle()
-
 	world.DrawDebugData()
 	world.ClearForces()
 
 	renderer.render(stage)
 
 requestAnimFrame( animate )
-
-update = () ->
-	world.Step(stepTime, stepVelocityIterations, stepPositionIterations)
-
-	world.ClearForces()
-
-
-#window.setInterval(update, 1000 / fps)
