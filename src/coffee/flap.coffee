@@ -8,8 +8,12 @@ stepTime = 1 / fps
 stepVelocityIterations = 1
 stepPositionIterations = 10
 
+KEYCODE_SPACE = 32
 KEYCODE_LEFT = 37
 KEYCODE_RIGHT = 39
+
+WINDOW_WIDTH = 480
+WINDOW_HEIGHT = 320
 
 # === Box2D ===
 
@@ -79,7 +83,7 @@ world.SetDebugDraw(debugDraw);              # worldにdebug用表示の設定
 
 stage = new PIXI.Stage(0x66ff99)
 
-renderer = PIXI.autoDetectRenderer(400, 300)
+renderer = PIXI.autoDetectRenderer(WINDOW_WIDTH, WINDOW_HEIGHT)
 
 # add the renderer view element to the DOM.
 $("#pixistage").append(renderer.view)
@@ -155,11 +159,11 @@ $('body').keydown(handleKeyDown)
 animate = () ->
 	requestAnimFrame( animate )
 
-	console.log jampingTick, keyCode, mouseJoint
 	if (inputTick == 0 && jampingTick == 0 && keyCode > 0 && (! mouseJoint))
 		jampingTick = fps * 0.2
 		inputTick = fps
 
+		sabazusiBody.SetLinearVelocity(new b2Vec2(0, 0))
 		pos = sabazusiBody.GetPosition()
 		console.log "loop keyCode is set", pos.x, pos.y
 		mouseJointDef = new b2MouseJointDef()
@@ -173,10 +177,12 @@ animate = () ->
 		sabazusiBody.SetAwake(true)
 
 		switch keyCode
+			when KEYCODE_SPACE
+				mouseJoint.SetTarget(new b2Vec2(pos.x, pos.y - 1.5))
 			when KEYCODE_LEFT
-				mouseJoint.SetTarget(new b2Vec2(pos.x - 0.2, pos.y - 2))
+				mouseJoint.SetTarget(new b2Vec2(pos.x - 0.2, pos.y - 1))
 			when KEYCODE_RIGHT
-				mouseJoint.SetTarget(new b2Vec2(pos.x + 0.2, pos.y - 2))
+				mouseJoint.SetTarget(new b2Vec2(pos.x + 0.2, pos.y - 1))
 
 	else if (mouseJoint)
 		if (jampingTick == 0)
@@ -190,7 +196,7 @@ animate = () ->
 		inputTick--
 
 	# worldの更新、経過時間、速度計算の内部繰り返し回数、位置計算の内部繰り返し回数
-	#world.Step(stepTime, stepVelocityIterations, stepPositionIterations)
+	world.Step(stepTime, stepVelocityIterations, stepPositionIterations)
 
 	pos = sabazusiBody.GetPosition();
 	sabazusi.position.x = pos.x * physScale
@@ -203,7 +209,8 @@ animate = () ->
 	graphics.position.y = pos.y * physScale - 20
 	#graphics.rotation = groundBody.GetAngle()
 
-	#world.ClearForces()
+	world.DrawDebugData()
+	world.ClearForces()
 
 	renderer.render(stage)
 
@@ -211,8 +218,8 @@ requestAnimFrame( animate )
 
 update = () ->
 	world.Step(stepTime, stepVelocityIterations, stepPositionIterations)
-	world.DrawDebugData()
+
 	world.ClearForces()
 
 
-window.setInterval(update, 1000 / fps)
+#window.setInterval(update, 1000 / fps)
