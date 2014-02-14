@@ -12,11 +12,17 @@ stepVelocityIterations = 10
 stepPositionIterations = 10
 
 KEYCODE_SPACE = 32
-KEYCODE_LEFT = 37
-KEYCODE_RIGHT = 39
+#KEYCODE_LEFT = 37
+#KEYCODE_RIGHT = 39
 
 WINDOW_WIDTH = 480
 WINDOW_HEIGHT = 320
+
+TYPE_TUMBLE_BOX = "tumbleBox"
+TYPE_TUMBLE_TRI = "tumbleTriangle"
+TYPE_SABA = "saba"
+
+WALL_HEIGHT = 5
 
 # === Box2D ===
 
@@ -41,6 +47,8 @@ fixtureDef = new b2FixtureDef()
 fixtureDef.density = 1.0
 fixtureDef.friction = 0.5
 fixtureDef.restitution = 0.5
+
+# = world object 生成関数 =
 
 setBoxShape = (pFixtureDef, pWidth, pHeight) ->
 	pFixtureDef.shape = new b2PolygonShape()
@@ -86,26 +94,58 @@ createDynamicCircleBody = (pWorld, pFixtureDef, pX, pY, pRadius) ->
 	return createBody(pWorld, bodyDef, pFixtureDef)
 
 createSabazusi = (pWorld, pFixtureDef) ->
-	return createDynamicBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH / 2, 32, 32, 32)
+	return createDynamicBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH / 2, 32, 22, 22)
 
 createGround = (pWorld, pFixtureDef) ->
 	return createStaticBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH / 2, 250, 200, 40)
 
 createFrameObject = (pWorld, pFixtureDef) ->
-	createStaticBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH / 2, 0, WINDOW_WIDTH, 10)
-	createStaticBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH / 2, WINDOW_HEIGHT, WINDOW_WIDTH, 10)
+	createStaticBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH / 2, 0, WINDOW_WIDTH + 96, 10)
+	createStaticBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH / 2, WINDOW_HEIGHT, WINDOW_WIDTH + 96, 10)
 
 createCircle = (pWorld, pFixtureDef) ->
 	createDynamicCircleBody(pWorld, pFixtureDef, 100, 32, 64)
 
+# 重力の相殺(各Step実行前に設定されている必要がある)
+offsetGravity = (pBody, linearVelocity) ->
+	pBody.SetLinearVelocity(linearVelocity)
+	pBody.ApplyForce(new b2Vec2(0, pBody.GetMass() * (-gravityY)), pBody.GetPosition())
+
+lastTumble = {}
+lastTumble.upper = {body: undefined, radius: 0}
+lastTumble.down = {body: undefined, radius: 0}
+boxScale = [1,1,1,2,2,2,3,3,4,5]
+
+generateTumble = (pWorld, pFixtureDef) ->
+	upRadius = boxScale[Math.floor( Math.random() * boxScale.length )] * 32
+	downRadius = Math.floor((Math.random() + 0.1) * (WINDOW_HEIGHT / 6)) + 32
+
+	if (lastTumble.upper.body == undefined || lastTumble.upper.body.GetPosition().x < (WINDOW_WIDTH - lastTumble.upper.radius / 2) / physScale)
+		upper = createDynamicBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH + upRadius / 2, upRadius / 2 + WALL_HEIGHT, upRadius / 2, upRadius)
+
+		upper.SetLinearVelocity(new b2Vec2(-1.5, 0))
+		upper.SetUserData({type: TYPE_TUMBLE_BOX})
+		lastTumble.upper.body = upper
+		lastTumble.upper.radius = upRadius
+
+	if (lastTumble.down.body == undefined || lastTumble.down.body.GetPosition().x < (WINDOW_WIDTH - lastTumble.down.radius / 2) / physScale)
+		v = 3
+		vecs = []
+		for i in [0...3]
+			vec = new b2Vec2((downRadius * Math.cos(Math.PI * 2 / v * i)) / physScale / 2, (downRadius * Math.sin(Math.PI * 2 / v * i)) / physScale / 2)
+			vecs.push(vec)
+		bodyDef = createDynamicBodyDef(WINDOW_WIDTH + downRadius, WINDOW_HEIGHT - downRadius / 2)
+		pFixtureDef.shape = new b2PolygonShape()
+		pFixtureDef.shape.SetAsArray(vecs, vecs.length)
+		down = createBody(pWorld, bodyDef, pFixtureDef)
+		down.SetLinearVelocity(new b2Vec2(-1.5, 0))
+		down.SetUserData({type: TYPE_TUMBLE_TRI})
+		lastTumble.down.body = down
+		lastTumble.down.radius = downRadius
+
 createFrameObject(world, fixtureDef)
 sabazusiBody = createSabazusi(world, fixtureDef)
-sabazusiBody.SetUserData({type: 'saba'})
-circleBody = createCircle(world, fixtureDef)
-
-circleBody.SetLinearVelocity(new b2Vec2(1.5, 0))
-# method not found ↓
-#circleBody.SetGravityScale(-1)
+sabazusiBody.SetUserData({type: TYPE_SABA})
 
 # debug用表示の設定
 debugDraw = new b2DebugDraw();          # Box2D.Dynamics.b2DebugDraw
@@ -124,7 +164,8 @@ listener = new b2Listener()
 listener.BeginContact = (contact) ->
 	a = contact.GetFixtureA().GetBody().GetUserData();
 	b = contact.GetFixtureB().GetBody().GetUserData();
-	console.log "BeginContact", a, b
+	#console.log "BeginContact", a, b
+
 
 world.SetContactListener(listener)
 
@@ -157,46 +198,32 @@ mouseJoint = null
 keyCode = 0
 jampingTick = 0
 inputTick = 0
+generateTick = 0
 
 getElementPosition = (element) ->
 	return {x: element.offsetLeft, y: element.offsetTop}
 
 canvasPosition = getElementPosition($('#pixistage')[0])
 
-handleMouseDown = (e) ->
-	console.log "mouseDown", e.clientX, e.clientY
-	isMouseDown = true
-	handleMouseMove(e)
-	$('body').mousemove(handleMouseMove)
-
-handleMouseUp = (e) ->
-	console.log "mouseUp", e.clientX, e.clientY
-	$('body').unbind("mousemove", handleMouseMove)
-	isMouseDown = false
-	mouseX = mouseY = undefined
-	mouseXphys = mouseYphys = undefined
-
-handleMouseMove = (e) ->
-	console.log "mouseMove", e.clientX, e.clientY
-	mouseX = e.clientX - canvasPosition.x
-	mouseY = e.clientY - canvasPosition.y
-	mouseXphys = mouseX / physScale
-	mouseYphys = mouseY / physScale
-
 handleKeyDown = (e) ->
 	console.log e.keyCode
 	keyCode = e.keyCode
 
-$('body').mousedown(handleMouseDown)
-$('body').mouseup(handleMouseUp)
 $('body').keydown(handleKeyDown)
+
+generateTumble(world, fixtureDef)
+generateTick = fps
 
 animate = () ->
 	requestAnimFrame( animate )
 
+	if (generateTick == 0)
+		generateTumble(world, fixtureDef)
+		generateTick = 1
+
 	if (inputTick == 0 && jampingTick == 0 && keyCode > 0 && (! mouseJoint))
 		jampingTick = fps * 0.2
-		inputTick = fps * 0.5
+		inputTick = fps * 0.4
 
 		sabazusiBody.SetLinearVelocity(new b2Vec2(0, 0))
 		pos = sabazusiBody.GetPosition()
@@ -207,17 +234,13 @@ animate = () ->
 		# ベクトルの開始座標を指定する
 		mouseJointDef.target.Set(pos.x, pos.y)
 		mouseJointDef.collideConnected = true
-		mouseJointDef.maxForce = 80.0 * sabazusiBody.GetMass()
+		mouseJointDef.maxForce = 85.0 * sabazusiBody.GetMass()
 		mouseJoint = world.CreateJoint(mouseJointDef)
 		sabazusiBody.SetAwake(true)
 
 		switch keyCode
 			when KEYCODE_SPACE
-				mouseJoint.SetTarget(new b2Vec2(pos.x, pos.y - 1.5))
-			when KEYCODE_LEFT
-				mouseJoint.SetTarget(new b2Vec2(pos.x - 0.2, pos.y - 1))
-			when KEYCODE_RIGHT
-				mouseJoint.SetTarget(new b2Vec2(pos.x + 0.2, pos.y - 1))
+				mouseJoint.SetTarget(new b2Vec2(pos.x, pos.y - 1.1))
 
 	else if (mouseJoint)
 		if (jampingTick == 0)
@@ -229,10 +252,20 @@ animate = () ->
 		jampingTick--
 	if (inputTick > 0)
 		inputTick--
+	if (generateTick > 0)
+		generateTick--
 
 	# 重力の相殺
-	circleBody.SetLinearVelocity(new b2Vec2(1.5, 0))
-	circleBody.ApplyForce(new b2Vec2(0, circleBody.GetMass() * (-gravityY)), circleBody.GetPosition())
+	body = world.GetBodyList()
+	while body
+		bodyData = body.GetUserData()
+		if (bodyData? && (bodyData.type == TYPE_TUMBLE_BOX || bodyData.type == TYPE_TUMBLE_TRI))
+			if (body.GetPosition().x < -2)
+				console.log "DestroyBody"
+				world.DestroyBody(body)
+			else
+				offsetGravity(body, new b2Vec2(-1.5, 0))
+		body = body.GetNext()
 
 	# worldの更新、経過時間、速度計算の内部繰り返し回数、位置計算の内部繰り返し回数
 	world.Step(stepTime, stepVelocityIterations, stepPositionIterations)
