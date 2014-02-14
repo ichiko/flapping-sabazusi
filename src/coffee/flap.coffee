@@ -1,11 +1,14 @@
 # flap.coffee
 
+gravityX = 0
+gravityY = 9.8
+
 # 1mを何pxで表すか
 physScale = 32
 
 fps = 40
 stepTime = 1 / fps
-stepVelocityIterations = 1
+stepVelocityIterations = 10
 stepPositionIterations = 10
 
 KEYCODE_SPACE = 32
@@ -26,12 +29,12 @@ b2Fixture = Box2D.Dynamics.b2Fixture
 b2World = Box2D.Dynamics.b2World
 #b2MassData = Box2D.Collision.Shapes.b2MassData
 b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape
-#b2CircleShape = Box2D.Collision.Shapes.b2CircleShape
+b2CircleShape = Box2D.Collision.Shapes.b2CircleShape
 b2DebugDraw = Box2D.Dynamics.b2DebugDraw
 b2MouseJointDef =  Box2D.Dynamics.Joints.b2MouseJointDef
 b2Listener = Box2D.Dynamics.b2ContactListener
 
-world = new b2World(new b2Vec2(0, 9.8), true)
+world = new b2World(new b2Vec2(gravityX, gravityY), true)
 
 # フィクスチャー定義：物体の密度、摩擦、反発
 fixtureDef = new b2FixtureDef()
@@ -39,29 +42,48 @@ fixtureDef.density = 1.0
 fixtureDef.friction = 0.5
 fixtureDef.restitution = 0.5
 
-createBoxBody = (pWorld, pFixtureDef, pBodyDef, pWidth, pHeight) ->
+setBoxShape = (pFixtureDef, pWidth, pHeight) ->
 	pFixtureDef.shape = new b2PolygonShape()
 	# set half of width, height
 	pFixtureDef.shape.SetAsBox(pWidth / physScale / 2, pHeight / physScale / 2)
 
+setCircleShape = (pFixtureDef, pRadius) ->
+	pFixtureDef.shape = new b2CircleShape(pRadius / physScale / 2)
+
+createDynamicBodyDef = (pX, pY) ->
+	bodyDef = new b2BodyDef()
+	bodyDef.type = b2Body.b2_dynamicBody
+	bodyDef.position.Set(pX / physScale, pY / physScale)
+
+	return bodyDef
+
+createStaticBodyDef = (pX, pY) ->
+	bodyDef = new b2BodyDef()
+	bodyDef.type = b2Body.b2_staticBody
+	bodyDef.position.Set(pX / physScale, pY / physScale)
+
+	return bodyDef
+
+createBody = (pWorld, pBodyDef, pFixtureDef) ->
 	body = pWorld.CreateBody(pBodyDef)
 	body.CreateFixture(pFixtureDef)
 
 	return body
 
 createDynamicBoxBody = (pWorld, pFixtureDef, pX, pY, pWidth, pHeight) ->
-	bodyDef = new b2BodyDef()
-	bodyDef.type = b2Body.b2_dynamicBody
-	bodyDef.position.Set(pX / physScale, pY / physScale)
-
-	return createBoxBody(pWorld, pFixtureDef, bodyDef, pWidth, pHeight)
+	bodyDef = createDynamicBodyDef(pX, pY)
+	setBoxShape(pFixtureDef, pWidth, pHeight)
+	return createBody(pWorld, bodyDef, pFixtureDef)
 
 createStaticBoxBody = (pWorld, pFixtureDef, pX, pY, pWidth, pHeight) ->
-	bodyDef = new b2BodyDef()
-	bodyDef.type = b2Body.b2_staticBody
-	bodyDef.position.Set(pX / physScale, pY / physScale)
+	bodyDef = createStaticBodyDef(pX, pY)
+	setBoxShape(pFixtureDef, pWidth, pHeight)
+	return createBody(pWorld, bodyDef, pFixtureDef)
 
-	return createBoxBody(pWorld, pFixtureDef, bodyDef, pWidth, pHeight)
+createDynamicCircleBody = (pWorld, pFixtureDef, pX, pY, pRadius) ->
+	bodyDef = createDynamicBodyDef(pX, pY)
+	setCircleShape(pFixtureDef, pRadius)
+	return createBody(pWorld, bodyDef, pFixtureDef)
 
 createSabazusi = (pWorld, pFixtureDef) ->
 	return createDynamicBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH / 2, 32, 32, 32)
@@ -73,9 +95,17 @@ createFrameObject = (pWorld, pFixtureDef) ->
 	createStaticBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH / 2, 0, WINDOW_WIDTH, 10)
 	createStaticBoxBody(pWorld, pFixtureDef, WINDOW_WIDTH / 2, WINDOW_HEIGHT, WINDOW_WIDTH, 10)
 
+createCircle = (pWorld, pFixtureDef) ->
+	createDynamicCircleBody(pWorld, pFixtureDef, 100, 32, 64)
+
 createFrameObject(world, fixtureDef)
-sabazusiBody= createSabazusi(world, fixtureDef)
-#groundBody = createGround(world, fixtureDef)
+sabazusiBody = createSabazusi(world, fixtureDef)
+sabazusiBody.SetUserData({type: 'saba'})
+circleBody = createCircle(world, fixtureDef)
+
+circleBody.SetLinearVelocity(new b2Vec2(1.5, 0))
+# method not found ↓
+#circleBody.SetGravityScale(-1)
 
 # debug用表示の設定
 debugDraw = new b2DebugDraw();          # Box2D.Dynamics.b2DebugDraw
@@ -86,6 +116,17 @@ debugDraw.SetLineThickness(1.0);            # lineの太さを1.0に
 debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit); # シェイプとジョイントを表示、他に
 # e_aabbBit,e_pairBit,e_centerOfMassBit,e_controllerBitを設定可能
 world.SetDebugDraw(debugDraw);              # worldにdebug用表示の設定
+
+# 衝突イベントリスナの設定
+listener = new b2Listener()
+
+# 接触した場合に一度だけ発生する
+listener.BeginContact = (contact) ->
+	a = contact.GetFixtureA().GetBody().GetUserData();
+	b = contact.GetFixtureB().GetBody().GetUserData();
+	console.log "BeginContact", a, b
+
+world.SetContactListener(listener)
 
 # === PIXI ===
 
@@ -188,6 +229,10 @@ animate = () ->
 		jampingTick--
 	if (inputTick > 0)
 		inputTick--
+
+	# 重力の相殺
+	circleBody.SetLinearVelocity(new b2Vec2(1.5, 0))
+	circleBody.ApplyForce(new b2Vec2(0, circleBody.GetMass() * (-gravityY)), circleBody.GetPosition())
 
 	# worldの更新、経過時間、速度計算の内部繰り返し回数、位置計算の内部繰り返し回数
 	world.Step(stepTime, stepVelocityIterations, stepPositionIterations)
