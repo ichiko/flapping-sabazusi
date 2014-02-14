@@ -155,7 +155,7 @@ animate = () ->
 
 	if (inputTick == 0 && jampingTick == 0 && keyCode > 0 && (! mouseJoint))
 		jampingTick = fps * 0.2
-		inputTick = fps
+		inputTick = fps * 0.5
 
 		sabazusiBody.SetLinearVelocity(new b2Vec2(0, 0))
 		pos = sabazusiBody.GetPosition()
