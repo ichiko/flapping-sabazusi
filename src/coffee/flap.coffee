@@ -248,6 +248,15 @@ stage.setBackgroundColor(0x696969)
 
 # === レンダリング ===
 
+ground = new PIXIShapeBox(0x808080, 0x696969, WINDOW_WIDTH, 20)
+ground.position.x = 0
+ground.position.y = 0
+stage.addChild(ground)
+ground = new PIXIShapeBox(0x808080, 0x696969, WINDOW_WIDTH, 20)
+ground.position.x = 0
+ground.position.y = WINDOW_HEIGHT - 20
+stage.addChild(ground)
+
 # create texture
 texture = PIXI.Texture.fromImage('image/sabazusi.png')
 
@@ -261,13 +270,6 @@ sabazusiBody.SetUserData({type: TYPE_SABA, renderObj: sabazusi})
 
 stage.addChild(sabazusi)
 
-v = 3
-r = 60
-g_vecs = []
-for i in [0...3]
-	gvec = [r * Math.cos(Math.PI * 2 / v * i), r * Math.sin(Math.PI * 2 / v * i)]
-	g_vecs.push(gvec)
-		
 mouseX = mouseY = undefined
 mouseXphys = mouseYphys = undefined
 isMouseDown = false
