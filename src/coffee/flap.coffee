@@ -235,6 +235,17 @@ listener.BeginContact = (contact) ->
 
 world.SetContactListener(listener)
 
+# === キーイベントの設定 ===
+
+keyCode = 0
+
+handleKeyDown = (e) ->
+	console.log e.keyCode
+	keyCode = e.keyCode
+
+$('body').keydown(handleKeyDown)
+
+
 # === PIXIの初期化 ===
 
 stage = new PIXI.Stage(0x66ff99)
@@ -246,49 +257,81 @@ $("#pixistage").append(renderer.view)
 
 stage.setBackgroundColor(0x696969)
 
-# === レンダリング ===
+# === レンダリング:スタート画面 ===
 
-ground = new PIXIShapeBox(0x808080, 0x696969, WINDOW_WIDTH, 20)
-ground.position.x = 0
-ground.position.y = 0
-stage.addChild(ground)
-ground = new PIXIShapeBox(0x808080, 0x696969, WINDOW_WIDTH, 20)
-ground.position.x = 0
-ground.position.y = WINDOW_HEIGHT - 20
-stage.addChild(ground)
+initShowTitle = () ->
+	width = WINDOW_WIDTH * 0.6
+	height = WINDOW_HEIGHT / 2
+	board = new PIXIShapeBox(0xdcdcdc, 0x696969, width, height)
+	board.position.x = (WINDOW_WIDTH - width) / 2
+	board.position.y = (WINDOW_HEIGHT - height) / 2
+	stage.addChild(board)
 
-# create texture
-texture = PIXI.Texture.fromImage('image/sabazusi.png')
+	title = new PIXI.Text("Flapping SABAZUSI", {fill: "blue", align:'center'})
+	title.width = WINDOW_WIDTH / 2
+	title.height = 60
+	title.position.x = (WINDOW_WIDTH - title.width) / 2
+	title.position.y = (WINDOW_HEIGHT - title.height) / 2 - 30
+	stage.addChild(title)
 
-sabazusi = new PIXI.Sprite(texture)
-sabazusi.anchor.x = 0.5
-sabazusi.anchor.y = 0.5
+	desc = new PIXI.Text("key SPACE to start", {font: "35px Desyrel", fill: "black", align:'center'})
+	desc.width = WINDOW_WIDTH / 2
+	desc.height = 35
+	desc.position.x = (WINDOW_WIDTH - title.width) / 2
+	desc.position.y = (WINDOW_HEIGHT - title.height) / 2 + 60
+	stage.addChild(desc)
 
-createFrameObject(generator, fixtureDef)
-sabazusiBody = createSabazusi(generator, fixtureDef)
-sabazusiBody.SetUserData({type: TYPE_SABA, renderObj: sabazusi})
+clearShowTitle = () ->
 
-stage.addChild(sabazusi)
+
+showTitle = () ->
+	if (keyCode == KEYCODE_SPACE)
+		clearShowTitle()
+		initAnimate()
+		requestAnimFrame( animate )
+	else
+		requestAnimFrame( showTitle )
+
+	renderer.render(stage)
+
+# === レンダリング:ゲーム画面 ===
 
 mouseX = mouseY = undefined
 mouseXphys = mouseYphys = undefined
 isMouseDown = false
 mouseJoint = null
-keyCode = 0
 jampingTick = 0
 inputTick = 0
 generateTick = 0
+sabazusiBody = undefined
 
 getElementPosition = (element) ->
 	return {x: element.offsetLeft, y: element.offsetTop}
 
 canvasPosition = getElementPosition($('#pixistage')[0])
 
-handleKeyDown = (e) ->
-	console.log e.keyCode
-	keyCode = e.keyCode
+initAnimate = () ->
+	ground = new PIXIShapeBox(0x808080, 0x696969, WINDOW_WIDTH, 20)
+	ground.position.x = 0
+	ground.position.y = 0
+	stage.addChild(ground)
+	ground = new PIXIShapeBox(0x808080, 0x696969, WINDOW_WIDTH, 20)
+	ground.position.x = 0
+	ground.position.y = WINDOW_HEIGHT - 20
+	stage.addChild(ground)
 
-$('body').keydown(handleKeyDown)
+	# create texture
+	texture = PIXI.Texture.fromImage('image/sabazusi.png')
+
+	sabazusi = new PIXI.Sprite(texture)
+	sabazusi.anchor.x = 0.5
+	sabazusi.anchor.y = 0.5
+
+	createFrameObject(generator, fixtureDef)
+	sabazusiBody = createSabazusi(generator, fixtureDef)
+	sabazusiBody.SetUserData({type: TYPE_SABA, renderObj: sabazusi})
+
+	stage.addChild(sabazusi)
 
 animate = () ->
 	requestAnimFrame( animate )
@@ -365,4 +408,8 @@ animate = () ->
 
 	renderer.render(stage)
 
-requestAnimFrame( animate )
+#requestAnimFrame( animate )
+
+initShowTitle()
+requestAnimFrame( showTitle )
+
