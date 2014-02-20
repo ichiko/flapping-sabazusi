@@ -6,7 +6,7 @@ gravityY = 9.8
 # 1mを何pxで表すか
 physScale = 32
 
-fps = 40
+fps = 30
 stepTime = 1 / fps
 stepVelocityIterations = 10
 stepPositionIterations = 10
@@ -419,7 +419,7 @@ class GameStage extends FSStage
 					@mouseJoint = world.CreateJoint(mouseJointDef)
 					@sabazusiBody.SetAwake(true)
 
-					@mouseJoint.SetTarget(new b2Vec2(pos.x, pos.y - 1.1))
+					@mouseJoint.SetTarget(new b2Vec2(pos.x, pos.y - 1.3))
 
 				else if (@mouseJoint)
 					if (@jampingTick == 0)
