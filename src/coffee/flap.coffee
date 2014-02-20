@@ -579,6 +579,14 @@ handleKeyDown = (e) ->
 
 $('body').keydown(handleKeyDown)
 
+# === マウスイベントの設定 ===
+
+handleMouseClick = (e) ->
+	console.log "mouseClick"
+	game.keyCode = KEYCODE_SPACE
+
+$('body').click(handleMouseClick)
+
 # === レンダリングループ ===
 
 showTitle = new ShowTitleStage()
