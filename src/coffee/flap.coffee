@@ -24,6 +24,15 @@ TYPE_SABA = "saba"
 
 WALL_HEIGHT = 5
 
+STAGE_TITLE = 10
+STAGE_FLAPPING = 20
+STAGE_RESULT = 21
+
+game = {}
+game.keyCode = 0
+game.stageState = STAGE_TITLE
+game.touchdownFlg = false
+
 # === Box2D class Definition ===
 
 b2Vec2 = Box2D.Common.Math.b2Vec2
@@ -90,14 +99,22 @@ class FSStage extends PIXI.Stage
 		super
 		@setBackgroundColor(0x696969)
 
+	# 最初に一回だけ呼ばれる処理
 	init: ->
 		# abstract
 
-	reset: ->
+	# 表示前の初期化処理
+	willAppear: ->
 		# abstract
 
-	update: (keyCode) ->
+	# リセット時に呼ばれる処理
+	didDisappear: ->
 		# abstract
+
+	# return next state
+	update: (currentState, keyCode) ->
+		# abstract
+		return false
 
 # = world object 生成関数 =
 
@@ -166,8 +183,6 @@ offsetGravity = (pBody, linearVelocity) ->
 	pBody.SetLinearVelocity(linearVelocity)
 	pBody.ApplyForce(new b2Vec2(0, pBody.GetMass() * (-gravityY)), pBody.GetPosition())
 
-
-
 world = new b2World(new b2Vec2(gravityX, gravityY), true)
 
 generator = new FSb2ShapeGenerator(world)
@@ -195,21 +210,17 @@ listener = new b2Listener()
 listener.BeginContact = (contact) ->
 	a = contact.GetFixtureA().GetBody().GetUserData();
 	b = contact.GetFixtureB().GetBody().GetUserData();
-	#console.log "BeginContact", a, b
-
+	if ((a? && a.type == TYPE_SABA) || (b? && b.type == TYPE_SABA))
+		game.touchdownFlg = true
 
 world.SetContactListener(listener)
 
 # === PIXIの初期化 ===
 
-stage = new PIXI.Stage(0x66ff99)
-
 renderer = PIXI.autoDetectRenderer(WINDOW_WIDTH, WINDOW_HEIGHT)
 
 # add the renderer view element to the DOM.
 $("#pixistage").append(renderer.view)
-
-stage.setBackgroundColor(0x696969)
 
 # === レンダリング:スタート画面 ===
 
@@ -235,9 +246,14 @@ class ShowTitleStage extends FSStage
 			desc = new PIXI.Text("key SPACE to start", {font: "35px Desyrel", fill: "black", align:'center'})
 			desc.width = WINDOW_WIDTH / 2
 			desc.height = 35
-			desc.position.x = (WINDOW_WIDTH - title.width) / 2
-			desc.position.y = (WINDOW_HEIGHT - title.height) / 2 + 60
+			desc.position.x = (WINDOW_WIDTH - desc.width) / 2
+			desc.position.y = (WINDOW_HEIGHT - desc.height) / 2 + 60
 			@addChild(desc)
+
+		@update = (currentState, keyCode) ->
+			if (keyCode == KEYCODE_SPACE)
+				return STAGE_FLAPPING
+			return currentState
 
 # === レンダリング:ゲーム画面 ===
 
@@ -245,29 +261,12 @@ class GameStage extends FSStage
 	constructor: ->
 		super
 
-		@mouseX = undefined
-		@mouseY = undefined
-		@mouseXphys = undefined
-		@mouseYphys = undefined
-		@isMouseDown = false
-		@mouseJoint = null
-		@jampingTick = 0
-		@inputTick = 0
-		@generateTick = 0
-		@sabazusiBody = undefined
-
-
-		@lastTumble = {}
-		@lastTumble.upper = {body: undefined, size: 0}
-		@lastTumble.down = {body: undefined, size: 0}
-
-
-		getElementPosition = (element) ->
-			return {x: element.offsetLeft, y: element.offsetTop}
-
-		@canvasPosition = getElementPosition($('#pixistage')[0])
-
 		@init = ->
+			getElementPosition = (element) ->
+				return {x: element.offsetLeft, y: element.offsetTop}
+
+			@canvasPosition = getElementPosition($('#pixistage')[0])
+
 			ground = new PIXIShapeBox(0x808080, 0x696969, WINDOW_WIDTH, 20)
 			ground.position.x = 0
 			ground.position.y = 0
@@ -284,91 +283,149 @@ class GameStage extends FSStage
 			sabazusi = new PIXI.Sprite(texture)
 			sabazusi.anchor.x = 0.5
 			sabazusi.anchor.y = 0.5
+			@sabazusiSprite = sabazusi
 
 			createFrameObject(generator, fixtureDef)
+
+		@willAppear = ->
+			console.log "willAppear"
+
+			@lastTumble = {}
+			@lastTumble.upper = {body: undefined, size: 0}
+			@lastTumble.down = {body: undefined, size: 0}
+
+			@mouseX = undefined
+			@mouseY = undefined
+			@mouseXphys = undefined
+			@mouseYphys = undefined
+			@isMouseDown = false
+			@mouseJoint = null
+			@jampingTick = 0
+			@inputTick = 0
+			@generateTick = 0
+			@sabazusiBody = undefined
+
+			game.touchdownFlg = false
+			@score = 0
+			@gameOverTick = fps * 0.8
+			@goAwayTick = @gameOverTick + fps * 0.5
+			@goAwayFlg = false
+
 			@sabazusiBody = createSabazusi(generator, fixtureDef)
-			@sabazusiBody.SetUserData({type: TYPE_SABA, renderObj: sabazusi})
+			@sabazusiBody.SetUserData({type: TYPE_SABA, renderObj: @sabazusiSprite})
 
-			@addChild(sabazusi)
+			@addChild(@sabazusiSprite)
 
-		@reset = ->
+		@didDisappear = ->
 			console.log "reset"
 
-		@update = (keyCode)->
-			if (@generateTick == 0)
-				@generateTumble(generator, fixtureDef, @)
-				@generateTick = 1
-
-			console.log @inputTick, @jampingTick, keyCode, @mouseJoint
-
-			if (@inputTick == 0 && @jampingTick == 0 && keyCode == KEYCODE_SPACE && (! @mouseJoint))
-				@jampingTick = fps * 0.2
-				@inputTick = fps * 0.4
-
-				@sabazusiBody.SetLinearVelocity(new b2Vec2(0, 0))
-				pos = @sabazusiBody.GetPosition()
-				console.log "loop keyCode is set", pos.x, pos.y
-				mouseJointDef = new b2MouseJointDef()
-				mouseJointDef.bodyA = world.GetGroundBody()
-				mouseJointDef.bodyB = @sabazusiBody
-				# ベクトルの開始座標を指定する
-				mouseJointDef.target.Set(pos.x, pos.y)
-				mouseJointDef.collideConnected = true
-				mouseJointDef.maxForce = 85.0 * @sabazusiBody.GetMass()
-				@mouseJoint = world.CreateJoint(mouseJointDef)
-				@sabazusiBody.SetAwake(true)
-
-				@mouseJoint.SetTarget(new b2Vec2(pos.x, pos.y - 1.1))
-
-			else if (@mouseJoint)
-				if (@jampingTick == 0)
-					console.log "DestroyJoint"
-					world.DestroyJoint(@mouseJoint)
-					@mouseJoint = null
-
-			if (@jampingTick > 0)
-				@jampingTick--
-			if (@inputTick > 0)
-				@inputTick--
-			if (@generateTick > 0)
-				@generateTick--
+			# 片付け
+			if (@mouseJoint)
+				world.DestroyJoint(@mouseJoint)
+				@mouseJoint = null
 
 			body = world.GetBodyList()
 			while body
 				bodyData = body.GetUserData()
 				if (bodyData?)
-					# 位置の更新
-					obj = bodyData.renderObj
-					if (obj?)
-						pos = body.GetPosition()
-						obj.rotation = body.GetAngle()
-						obj.position.x = Math.floor(pos.x * physScale)
-						obj.position.y = Math.floor(pos.y * physScale)
-						if (obj instanceof PIXIShapeBox)
-							obj.position.x -= Math.floor(obj.width / 2)
-							obj.position.y -= Math.floor(obj.height / 2)
-					# 削除と方向修正
-					if (bodyData.type == TYPE_TUMBLE_BOX || bodyData.type == TYPE_TUMBLE_TRI)
-						if (body.GetPosition().x < -2)
-							# 範囲外にきたときに削除
-							console.log "DestroyBody"
-							stage.removeChild(bodyData.renderObj)
-							world.DestroyBody(body)
-						else
-							# 重力の相殺
-							offsetGravity(body, new b2Vec2(-1.5, 0))
+					if (bodyData.type == TYPE_TUMBLE_BOX || bodyData.type == TYPE_TUMBLE_TRI || bodyData.type == TYPE_SABA)
+						if (bodyData.renderObj?)
+							@removeChild(bodyData.renderObj)
+						world.DestroyBody(body)
+
 				body = body.GetNext()
 
-			# worldの更新、経過時間、速度計算の内部繰り返し回数、位置計算の内部繰り返し回数
-			world.Step(stepTime, stepVelocityIterations, stepPositionIterations)
+			@removeResultPanel()
 
-			world.DrawDebugData()
-			world.ClearForces()
+		@update = (currentState, keyCode) ->
+			if (game.touchdownFlg)
+				# game over
+				if (! @goAwayFlg)
+					if (@gameOverTick == 0 && ! @goAwayFlg)
+						@addResultPanel()
+
+					if (@goAwayTick == 0)
+						@goAwayFlg = true
+
+					if (@gameOverTick > 0)
+						@gameOverTick--
+					if (@goAwayTick > 0)
+						@goAwayTick--
+
+				if (@goAwayFlg && keyCode == KEYCODE_SPACE)
+					return STAGE_TITLE
+
+			else
+				if (@generateTick == 0)
+					@generateTumble(generator, fixtureDef, @)
+					@generateTick = 1
+
+				if (@inputTick == 0 && @jampingTick == 0 && keyCode == KEYCODE_SPACE && (! @mouseJoint))
+					@jampingTick = fps * 0.2
+					@inputTick = fps * 0.4
+
+					@sabazusiBody.SetLinearVelocity(new b2Vec2(0, 0))
+					pos = @sabazusiBody.GetPosition()
+					mouseJointDef = new b2MouseJointDef()
+					mouseJointDef.bodyA = world.GetGroundBody()
+					mouseJointDef.bodyB = @sabazusiBody
+					# ベクトルの開始座標を指定する
+					mouseJointDef.target.Set(pos.x, pos.y)
+					mouseJointDef.collideConnected = true
+					mouseJointDef.maxForce = 85.0 * @sabazusiBody.GetMass()
+					@mouseJoint = world.CreateJoint(mouseJointDef)
+					@sabazusiBody.SetAwake(true)
+
+					@mouseJoint.SetTarget(new b2Vec2(pos.x, pos.y - 1.1))
+
+				else if (@mouseJoint)
+					if (@jampingTick == 0)
+						world.DestroyJoint(@mouseJoint)
+						@mouseJoint = null
+
+				if (@jampingTick > 0)
+					@jampingTick--
+				if (@inputTick > 0)
+					@inputTick--
+				if (@generateTick > 0)
+					@generateTick--
+
+				body = world.GetBodyList()
+				while body
+					bodyData = body.GetUserData()
+					if (bodyData?)
+						# 位置の更新
+						obj = bodyData.renderObj
+						if (obj?)
+							pos = body.GetPosition()
+							obj.rotation = body.GetAngle()
+							obj.position.x = Math.floor(pos.x * physScale)
+							obj.position.y = Math.floor(pos.y * physScale)
+							if (obj instanceof PIXIShapeBox)
+								obj.position.x -= Math.floor(obj.width / 2)
+								obj.position.y -= Math.floor(obj.height / 2)
+						# 削除と方向修正
+						if (bodyData.type == TYPE_TUMBLE_BOX || bodyData.type == TYPE_TUMBLE_TRI)
+							if (body.GetPosition().x < -2)
+								# 範囲外にきたときに削除
+								@removeChild(bodyData.renderObj)
+								world.DestroyBody(body)
+							else
+								# 重力の相殺
+								offsetGravity(body, new b2Vec2(-1.5, 0))
+					body = body.GetNext()
+
+				# worldの更新、経過時間、速度計算の内部繰り返し回数、位置計算の内部繰り返し回数
+				world.Step(stepTime, stepVelocityIterations, stepPositionIterations)
+
+				world.DrawDebugData()
+				world.ClearForces()
+
+			return currentState
 
 	boxScale = [1,1,1,2,2,2,3,3,4,5]
 
 	generateTumble: (pGenerator, pFixtureDef, pStage) ->
-
 		if (@lastTumble.upper.body == undefined || @lastTumble.upper.body.GetPosition().x < (WINDOW_WIDTH - @lastTumble.upper.size / 2) / physScale)
 			scaleNum = Math.floor( Math.random() * boxScale.length )
 			size = boxScale[scaleNum] * 32
@@ -385,7 +442,6 @@ class GameStage extends FSStage
 			@lastTumble.upper.size = size
 
 			@addChild(box)
-			box = null
 
 		if (@lastTumble.down.body == undefined || @lastTumble.down.body.GetPosition().x < (WINDOW_WIDTH - @lastTumble.down.size / 2) / physScale)
 			downRadius = Math.floor((Math.random() + 0.1) * (WINDOW_HEIGHT / 6)) + 32
@@ -413,51 +469,82 @@ class GameStage extends FSStage
 
 			@addChild(triangle)
 
-# === キーイベントの設定 ===
+	addResultPanel: ->
+		if (@resultPanel?)
+			return
 
-keyCode = 0
+		width = WINDOW_WIDTH * 0.6
+		height = WINDOW_HEIGHT / 2
+		board = new PIXIShapeBox(0xdcdcdc, 0x696969, width, height)
+		board.position.x = (WINDOW_WIDTH - width) / 2
+		board.position.y = (WINDOW_HEIGHT - height) / 2
+		@addChild(board)
+
+		title = new PIXI.Text("RESULT", {font: "35px Desyrel", fill: "black", align:'center'})
+		title.width = WINDOW_WIDTH / 3
+		title.height = 35
+		title.position.x = (WINDOW_WIDTH - title.width) / 2
+		title.position.y = (WINDOW_HEIGHT - title.height) / 2 - 20
+		@addChild(title)
+
+		score = new PIXI.Text("Score: " + @score, {font: "35px Desyrel", fill: "black", align:'center'})
+		score.width = WINDOW_WIDTH / 4
+		score.height = 35
+		score.position.x = (WINDOW_WIDTH - score.width) / 2
+		score.position.y = (WINDOW_HEIGHT - score.height) / 2 + 20
+		@addChild(score)
+
+		@resultPanel or= {}
+		@resultPanel.back = board
+		@resultPanel.title = title
+		@resultPanel.score = score
+
+	removeResultPanel: ->
+		if (@resultPanel?)
+			@removeChild(@resultPanel.back)
+			@removeChild(@resultPanel.title)
+			@removeChild(@resultPanel.score)
+			@resultPanel = undefined
+
+# === キーイベントの設定 ===
 
 handleKeyDown = (e) ->
 	console.log e.keyCode
-	keyCode = e.keyCode
+	game.keyCode = e.keyCode
 
 $('body').keydown(handleKeyDown)
 
 # === レンダリングループ ===
-
-STAGE_TITLE = 10
-STAGE_FLAPPING = 20
-
-stageState = STAGE_TITLE
 
 showTitle = new ShowTitleStage()
 showTitle.init()
 flapping = new GameStage()
 flapping.init()
 
+getStage = (stageState) ->
+	switch stageState
+		when STAGE_TITLE
+			return showTitle
+		when STAGE_FLAPPING
+			return flapping
+	return undefined
+
 animate = () ->
 	requestAnimFrame( animate )
 
-	prevState = stageState
+	prevState = game.stageState
 
-	# ステージ切り替えチェック
-	if (stageState == STAGE_TITLE && keyCode == KEYCODE_SPACE)
-		stageState = STAGE_FLAPPING
-		keyCode = 0
+	stage = getStage(game.stageState)
 
-	stage = undefined
-	switch stageState
-		when STAGE_TITLE
-			stage = showTitle
-		when STAGE_FLAPPING
-			stage = flapping
+	game.stageState = stage.update(game.stageState, game.keyCode)
 
-	if (stageState != prevState)
-		stage.reset()
+	if (game.stageState != prevState)
+		stage = getStage(game.stageState)
+		console.log "state changed", prevState, game.stageState
+		stage.didDisappear()
+		stage.willAppear()
 
-	stage.update(keyCode)
-
-	keyCode = 0
+	game.keyCode = 0
 
 	renderer.render(stage)
 
