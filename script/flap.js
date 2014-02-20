@@ -690,7 +690,7 @@
     return game.keyCode = KEYCODE_SPACE;
   };
 
-  $('body').mousedown(onClickOrTap);
+  $('#pixistage').mousedown(onClickOrTap);
 
   touchStarted = false;
 
@@ -705,7 +705,7 @@
     }
   };
 
-  $('body').on('touchstart touchmove touchend', handleTouchEvent);
+  $('#pixistage').on('touchstart touchmove touchend', handleTouchEvent);
 
   showTitle = new ShowTitleStage();
 
