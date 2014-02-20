@@ -1,5 +1,5 @@
 (function() {
-  var AUDIO_EXT, FSStage, FSb2ShapeGenerator, GameStage, KEYCODE_SPACE, PIXIShape, PIXIShapeBox, PIXIShapePolygon, STAGE_FLAPPING, STAGE_RESULT, STAGE_TITLE, ShowTitleStage, TYPE_SABA, TYPE_TUMBLE_BOX, TYPE_TUMBLE_TRI, WALL_HEIGHT, WINDOW_HEIGHT, WINDOW_WIDTH, animate, audioBackupCount, audioList, b2Body, b2BodyDef, b2CircleShape, b2DebugDraw, b2Fixture, b2FixtureDef, b2Listener, b2MouseJointDef, b2PolygonShape, b2Vec2, b2World, createAudio, createCircle, createFrameObject, createGround, createSabazusi, debugDraw, ditectAudioExt, enableDebugDraw, fixtureDef, flapping, fps, game, generator, getStage, gravityX, gravityY, handleKeyDown, listener, offsetGravity, physScale, playAudio, renderer, showTitle, stepPositionIterations, stepTime, stepVelocityIterations, world,
+  var AUDIO_EXT, FSStage, FSb2ShapeGenerator, GameStage, KEYCODE_SPACE, PIXIShape, PIXIShapeBox, PIXIShapePolygon, STAGE_FLAPPING, STAGE_RESULT, STAGE_TITLE, ShowTitleStage, TYPE_SABA, TYPE_TUMBLE_BOX, TYPE_TUMBLE_TRI, WALL_HEIGHT, WINDOW_HEIGHT, WINDOW_WIDTH, animate, audioBackupCount, audioList, b2Body, b2BodyDef, b2CircleShape, b2DebugDraw, b2Fixture, b2FixtureDef, b2Listener, b2MouseJointDef, b2PolygonShape, b2Vec2, b2World, createAudio, createCircle, createFrameObject, createGround, createSabazusi, debugDraw, ditectAudioExt, enableDebugDraw, fixtureDef, flapping, fps, game, generator, getStage, gravityX, gravityY, handleKeyDown, handleMouseClick, listener, offsetGravity, physScale, playAudio, renderer, showTitle, stepPositionIterations, stepTime, stepVelocityIterations, world,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -683,6 +683,13 @@
   };
 
   $('body').keydown(handleKeyDown);
+
+  handleMouseClick = function(e) {
+    console.log("mouseClick");
+    return game.keyCode = KEYCODE_SPACE;
+  };
+
+  $('body').click(handleMouseClick);
 
   showTitle = new ShowTitleStage();
 
