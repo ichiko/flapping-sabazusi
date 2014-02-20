@@ -579,13 +579,27 @@ handleKeyDown = (e) ->
 
 $('body').keydown(handleKeyDown)
 
-# === マウスイベントの設定 ===
+# === クリック・タップイベントの設定 ===
 
-handleMouseClick = (e) ->
-	console.log "mouseClick"
+onClickOrTap = (e) ->
+	e.preventDefault()
+
+	console.log "ClickOrTap"
 	game.keyCode = KEYCODE_SPACE
 
-$('body').click(handleMouseClick)
+$('body').click(onClickOrTap)
+
+touchStarted = false
+handleTouchEvent = (e) ->
+	if (e.type == 'touchstart')
+		touchStarted = true
+	else if (e.type == 'touchmove')
+		touchStarted = false
+	else if (e.type == 'touchend')
+		onClickOrTap(e)
+		touchStarted = false
+
+$('body').on('touchstart touchmove touchend', handleTouchEvent)
 
 # === レンダリングループ ===
 
