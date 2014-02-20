@@ -1,0 +1,15 @@
+.DS_Store
+.bundle/
+vendor/
+src/
+bower_components/
+node_modules/
+public/
+Gemfile
+Gemfile.lock
+Gruntfile.coffee
+README.md
+app.rb
+bower.json
+config.ru
+package.json
