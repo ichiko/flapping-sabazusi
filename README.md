@@ -1,4 +1,6 @@
-## for Developer
+this is a mini game on browser
+
+## How to play
 
 ### setup
 
@@ -23,3 +25,5 @@ start sinatra server.
 ```
 bundle exec rackup
 ```
+
+open [http://localhost:9292]
