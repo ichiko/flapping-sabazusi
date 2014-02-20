@@ -587,7 +587,7 @@ onClickOrTap = (e) ->
 	console.log "ClickOrTap"
 	game.keyCode = KEYCODE_SPACE
 
-$('body').click(onClickOrTap)
+$('body').mousedown(onClickOrTap)
 
 touchStarted = false
 handleTouchEvent = (e) ->
