@@ -413,6 +413,15 @@ class GameStage extends FSStage
 							else
 								# 重力の相殺
 								offsetGravity(body, new b2Vec2(-1.5, 0))
+								# スコア計算
+								if (! bodyData.isChecked)
+									sabaX = Math.floor(@sabazusiBody.GetPosition().x * physScale)
+									if (bodyData.type == TYPE_TUMBLE_BOX)
+										x = Math.floor(body.GetPosition().x * physScale) + bodyData.renderObj.width / 2
+										if (x < sabaX)
+											bodyData.isChecked = true
+											@score++
+
 					body = body.GetNext()
 
 				# worldの更新、経過時間、速度計算の内部繰り返し回数、位置計算の内部繰り返し回数
@@ -437,7 +446,7 @@ class GameStage extends FSStage
 			box = new PIXIShapeBox(0x2f4f4f, 0x000000, width, height)
 
 			upper.SetLinearVelocity(new b2Vec2(-1.5, 0))
-			upper.SetUserData({type: TYPE_TUMBLE_BOX, renderObj: box})
+			upper.SetUserData({type: TYPE_TUMBLE_BOX, renderObj: box, isChecked: false})
 			@lastTumble.upper.body = upper
 			@lastTumble.upper.size = size
 
@@ -463,7 +472,7 @@ class GameStage extends FSStage
 			triangle = new PIXIShapePolygon(0x2f4f4f, 0x000000, downRadius, g_vecs)
 
 			down.SetLinearVelocity(new b2Vec2(-1.5, 0))
-			down.SetUserData({type: TYPE_TUMBLE_TRI, renderObj: triangle})
+			down.SetUserData({type: TYPE_TUMBLE_TRI, renderObj: triangle, isChecked: false})
 			@lastTumble.down.body = down
 			@lastTumble.down.size = downRadius
 
