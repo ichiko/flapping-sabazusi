@@ -455,14 +455,13 @@ class GameStage extends FSStage
 								# 重力の相殺
 								offsetGravity(body, new b2Vec2(-1.5, 0))
 								# スコア計算
-								if (! bodyData.isChecked)
+								if (! bodyData.isChecked && bodyData.type == TYPE_TUMBLE_BOX)
 									sabaX = Math.floor(@sabazusiBody.GetPosition().x * physScale)
-									if (bodyData.type == TYPE_TUMBLE_BOX)
-										x = Math.floor(body.GetPosition().x * physScale) + bodyData.renderObj.width / 2
-										if (x < sabaX)
-											bodyData.isChecked = true
-											@score++
-											playAudio("score")
+									x = Math.floor(body.GetPosition().x * physScale) + bodyData.renderObj.width / 2
+									if (x < sabaX)
+										bodyData.isChecked = true
+										@score++
+										playAudio("score")
 
 					body = body.GetNext()
 
