@@ -587,7 +587,7 @@ onClickOrTap = (e) ->
 	console.log "ClickOrTap"
 	game.keyCode = KEYCODE_SPACE
 
-$('body').mousedown(onClickOrTap)
+$('#pixistage').mousedown(onClickOrTap)
 
 touchStarted = false
 handleTouchEvent = (e) ->
@@ -599,7 +599,7 @@ handleTouchEvent = (e) ->
 		onClickOrTap(e)
 		touchStarted = false
 
-$('body').on('touchstart touchmove touchend', handleTouchEvent)
+$('#pixistage').on('touchstart touchmove touchend', handleTouchEvent)
 
 # === レンダリングループ ===
 
