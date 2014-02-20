@@ -215,6 +215,47 @@ listener.BeginContact = (contact) ->
 
 world.SetContactListener(listener)
 
+# === サウンド ===
+
+ditectAudioExt = ->
+	audio = new Audio()
+	if (audio.canPlayType("audio/ogg") == 'maybe')
+		return 'ogg'
+	else if (audio.canPlayType("audio/mp3") == 'maybe')
+		return 'mp3'
+	else if (audio.canPlayType("audio/wav") == 'maybe')
+		return 'wav'
+	audio = undefined
+	return ''
+
+AUDIO_EXT = ditectAudioExt()
+audioBackupCount = 2
+
+createAudio = (filepath, count) ->
+	list = []
+	for i in [0...count]
+		list.push(new Audio(filepath))
+	return list
+
+audioList = {
+	'score': {
+		list: createAudio("sound/SE001." + AUDIO_EXT, audioBackupCount),
+		index: 0
+	}
+}
+
+playAudio = (id) ->
+	if (AUDIO_EXT == '')
+		# un usable sound
+		return
+
+	console.log 'sound', id, audioList, ('score' in audioList), audioList[id]
+	audioData = audioList[id]
+	audioData.list[audioData.index].play()
+	audioData.index++
+	if (audioData.index >= audioBackupCount)
+		audioData.index = 0
+
 # === PIXIの初期化 ===
 
 renderer = PIXI.autoDetectRenderer(WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -421,6 +462,7 @@ class GameStage extends FSStage
 										if (x < sabaX)
 											bodyData.isChecked = true
 											@score++
+											playAudio("score")
 
 					body = body.GetNext()
 
