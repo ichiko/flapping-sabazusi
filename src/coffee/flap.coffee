@@ -11,6 +11,8 @@ stepTime = 1 / fps
 stepVelocityIterations = 10
 stepPositionIterations = 10
 
+enableDebugDraw = false
+
 KEYCODE_SPACE = 32
 #KEYCODE_LEFT = 37
 #KEYCODE_RIGHT = 39
@@ -194,14 +196,15 @@ fixtureDef.friction = 0.5
 fixtureDef.restitution = 0.5
 
 # debug用表示の設定
-debugDraw = new b2DebugDraw();          # Box2D.Dynamics.b2DebugDraw
-debugDraw.SetSprite($("#box2ddebug")[0].getContext("2d")); # canvas 2dのcontextを設定
-debugDraw.SetDrawScale(physScale);          # 表示のスケール(1メートル、何pixelか?)
-debugDraw.SetFillAlpha(0.5);                # 塗りつぶし透明度を0.5に
-debugDraw.SetLineThickness(1.0);            # lineの太さを1.0に
-debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit); # シェイプとジョイントを表示、他に
-# e_aabbBit,e_pairBit,e_centerOfMassBit,e_controllerBitを設定可能
-world.SetDebugDraw(debugDraw);              # worldにdebug用表示の設定
+if (enableDebugDraw)
+	debugDraw = new b2DebugDraw();          # Box2D.Dynamics.b2DebugDraw
+	debugDraw.SetSprite($("#box2ddebug")[0].getContext("2d")); # canvas 2dのcontextを設定
+	debugDraw.SetDrawScale(physScale);          # 表示のスケール(1メートル、何pixelか?)
+	debugDraw.SetFillAlpha(0.5);                # 塗りつぶし透明度を0.5に
+	debugDraw.SetLineThickness(1.0);            # lineの太さを1.0に
+	debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit); # シェイプとジョイントを表示、他に
+	# e_aabbBit,e_pairBit,e_centerOfMassBit,e_controllerBitを設定可能
+	world.SetDebugDraw(debugDraw);              # worldにdebug用表示の設定
 
 # 衝突イベントリスナの設定
 listener = new b2Listener()
@@ -249,7 +252,6 @@ playAudio = (id) ->
 		# un usable sound
 		return
 
-	console.log 'sound', id, audioList, ('score' in audioList), audioList[id]
 	audioData = audioList[id]
 	audioData.list[audioData.index].play()
 	audioData.index++
@@ -475,7 +477,20 @@ class GameStage extends FSStage
 
 	boxScale = [1,1,1,2,2,2,3,3,4,5]
 
+	setupTriangleVecs: ->
+		if (@triVecs?)
+			return
+
+		@triVecs = []
+		v = 3
+		for i in [0...3]
+			x = Math.cos(Math.PI * 2 / v * i)
+			y = Math.sin(Math.PI * 2 / v * i)
+			@triVecs.push({x: x, y: y})
+
 	generateTumble: (pGenerator, pFixtureDef, pStage) ->
+		@setupTriangleVecs()
+
 		if (@lastTumble.upper.body == undefined || @lastTumble.upper.body.GetPosition().x < (WINDOW_WIDTH - @lastTumble.upper.size / 2) / physScale)
 			scaleNum = Math.floor( Math.random() * boxScale.length )
 			size = boxScale[scaleNum] * 32
@@ -499,8 +514,8 @@ class GameStage extends FSStage
 			vecs = []
 			g_vecs = []
 			for i in [0...3]
-				x = downRadius * Math.cos(Math.PI * 2 / v * i)
-				y = downRadius * Math.sin(Math.PI * 2 / v * i)
+				x = downRadius * @triVecs[i].x
+				y = downRadius * @triVecs[i].y
 				vec = new b2Vec2( x / physScale / 2, y / physScale / 2)
 				gvec = [x / 2, y / 2]
 				vecs.push(vec)
