@@ -17,8 +17,8 @@ KEYCODE_SPACE = 32
 #KEYCODE_LEFT = 37
 #KEYCODE_RIGHT = 39
 
-WINDOW_WIDTH = 480
-WINDOW_HEIGHT = 320
+WINDOW_WIDTH = 300
+WINDOW_HEIGHT = 360
 
 TYPE_TUMBLE_BOX = "tumbleBox"
 TYPE_TUMBLE_TRI = "tumbleTriangle"
@@ -286,11 +286,18 @@ class ShowTitleStage extends FSStage
 			title.position.y = (WINDOW_HEIGHT - title.height) / 2 - 30
 			@addChild(title)
 
-			desc = new PIXI.Text("key SPACE to start", {font: "35px Desyrel", fill: "black", align:'center'})
+			desc = new PIXI.Text("key SPACE or TAP", {font: "35px Desyrel", fill: "black", align:'center'})
 			desc.width = WINDOW_WIDTH / 2
 			desc.height = 35
 			desc.position.x = (WINDOW_WIDTH - desc.width) / 2
-			desc.position.y = (WINDOW_HEIGHT - desc.height) / 2 + 60
+			desc.position.y = (WINDOW_HEIGHT - desc.height) / 2 + 50
+			@addChild(desc)
+
+			desc = new PIXI.Text("to start", {font: "35px Desyrel", fill: "black", align:'center'})
+			desc.width = WINDOW_WIDTH / 4
+			desc.height = 35
+			desc.position.x = (WINDOW_WIDTH - desc.width) / 2
+			desc.position.y = (WINDOW_HEIGHT - desc.height) / 2 + 70
 			@addChild(desc)
 
 		@update = (currentState, keyCode) ->
@@ -331,8 +338,6 @@ class GameStage extends FSStage
 			createFrameObject(generator, fixtureDef)
 
 		@willAppear = ->
-			console.log "willAppear"
-
 			@lastTumble = {}
 			@lastTumble.upper = {body: undefined, size: 0}
 			@lastTumble.down = {body: undefined, size: 0}
@@ -360,8 +365,6 @@ class GameStage extends FSStage
 			@addChild(@sabazusiSprite)
 
 		@didDisappear = ->
-			console.log "reset"
-
 			# 片付け
 			if (@mouseJoint)
 				world.DestroyJoint(@mouseJoint)
@@ -475,7 +478,7 @@ class GameStage extends FSStage
 
 			return currentState
 
-	boxScale = [1,1,1,2,2,2,3,3,4,5]
+	boxScale = [1,1,1,2,2,2,3,3,4,5,5,6]
 
 	setupTriangleVecs: ->
 		if (@triVecs?)
@@ -493,11 +496,11 @@ class GameStage extends FSStage
 
 		if (@lastTumble.upper.body == undefined || @lastTumble.upper.body.GetPosition().x < (WINDOW_WIDTH - @lastTumble.upper.size / 2) / physScale)
 			scaleNum = Math.floor( Math.random() * boxScale.length )
-			size = boxScale[scaleNum] * 32
-			x = WINDOW_WIDTH + size / 2
-			y = size / 2 + WALL_HEIGHT
+			size = boxScale[scaleNum] * 28
 			width = size / 2
 			height = size
+			x = WINDOW_WIDTH + width / 2
+			y = size / 2 + WALL_HEIGHT
 			upper = pGenerator.createDynamicBoxBody(pFixtureDef, x, y, width, height)
 			box = new PIXIShapeBox(0x2f4f4f, 0x000000, width, height)
 
@@ -574,7 +577,6 @@ class GameStage extends FSStage
 # === キーイベントの設定 ===
 
 handleKeyDown = (e) ->
-	console.log e.keyCode
 	game.keyCode = e.keyCode
 
 $('body').keydown(handleKeyDown)
@@ -583,8 +585,6 @@ $('body').keydown(handleKeyDown)
 
 onClickOrTap = (e) ->
 	e.preventDefault()
-
-	console.log "ClickOrTap"
 	game.keyCode = KEYCODE_SPACE
 
 $('#pixistage').mousedown(onClickOrTap)
@@ -627,7 +627,6 @@ animate = () ->
 
 	if (game.stageState != prevState)
 		stage = getStage(game.stageState)
-		console.log "state changed", prevState, game.stageState
 		stage.didDisappear()
 		stage.willAppear()
 
