@@ -21,9 +21,9 @@
 
   KEYCODE_SPACE = 32;
 
-  WINDOW_WIDTH = 480;
+  WINDOW_WIDTH = 300;
 
-  WINDOW_HEIGHT = 320;
+  WINDOW_HEIGHT = 360;
 
   TYPE_TUMBLE_BOX = "tumbleBox";
 
@@ -348,7 +348,7 @@
         title.position.x = (WINDOW_WIDTH - title.width) / 2;
         title.position.y = (WINDOW_HEIGHT - title.height) / 2 - 30;
         this.addChild(title);
-        desc = new PIXI.Text("key SPACE to start", {
+        desc = new PIXI.Text("key SPACE or TAP", {
           font: "35px Desyrel",
           fill: "black",
           align: 'center'
@@ -356,7 +356,17 @@
         desc.width = WINDOW_WIDTH / 2;
         desc.height = 35;
         desc.position.x = (WINDOW_WIDTH - desc.width) / 2;
-        desc.position.y = (WINDOW_HEIGHT - desc.height) / 2 + 60;
+        desc.position.y = (WINDOW_HEIGHT - desc.height) / 2 + 50;
+        this.addChild(desc);
+        desc = new PIXI.Text("to start", {
+          font: "35px Desyrel",
+          fill: "black",
+          align: 'center'
+        });
+        desc.width = WINDOW_WIDTH / 4;
+        desc.height = 35;
+        desc.position.x = (WINDOW_WIDTH - desc.width) / 2;
+        desc.position.y = (WINDOW_HEIGHT - desc.height) / 2 + 70;
         return this.addChild(desc);
       };
       this.update = function(currentState, keyCode) {
@@ -403,7 +413,6 @@
         return createFrameObject(generator, fixtureDef);
       };
       this.willAppear = function() {
-        console.log("willAppear");
         this.lastTumble = {};
         this.lastTumble.upper = {
           body: void 0,
@@ -437,7 +446,6 @@
       };
       this.didDisappear = function() {
         var body, bodyData;
-        console.log("reset");
         if (this.mouseJoint) {
           world.DestroyJoint(this.mouseJoint);
           this.mouseJoint = null;
@@ -554,7 +562,7 @@
       };
     }
 
-    boxScale = [1, 1, 1, 2, 2, 2, 3, 3, 4, 5];
+    boxScale = [1, 1, 1, 2, 2, 2, 3, 3, 4, 5, 5, 6];
 
     GameStage.prototype.setupTriangleVecs = function() {
       var i, v, x, y, _i, _results;
@@ -580,11 +588,11 @@
       this.setupTriangleVecs();
       if (this.lastTumble.upper.body === void 0 || this.lastTumble.upper.body.GetPosition().x < (WINDOW_WIDTH - this.lastTumble.upper.size / 2) / physScale) {
         scaleNum = Math.floor(Math.random() * boxScale.length);
-        size = boxScale[scaleNum] * 32;
-        x = WINDOW_WIDTH + size / 2;
-        y = size / 2 + WALL_HEIGHT;
+        size = boxScale[scaleNum] * 28;
         width = size / 2;
         height = size;
+        x = WINDOW_WIDTH + width / 2;
+        y = size / 2 + WALL_HEIGHT;
         upper = pGenerator.createDynamicBoxBody(pFixtureDef, x, y, width, height);
         box = new PIXIShapeBox(0x2f4f4f, 0x000000, width, height);
         upper.SetLinearVelocity(new b2Vec2(-1.5, 0));
@@ -678,7 +686,6 @@
   })(FSStage);
 
   handleKeyDown = function(e) {
-    console.log(e.keyCode);
     return game.keyCode = e.keyCode;
   };
 
@@ -686,7 +693,6 @@
 
   onClickOrTap = function(e) {
     e.preventDefault();
-    console.log("ClickOrTap");
     return game.keyCode = KEYCODE_SPACE;
   };
 
@@ -733,7 +739,6 @@
     game.stageState = stage.update(game.stageState, game.keyCode);
     if (game.stageState !== prevState) {
       stage = getStage(game.stageState);
-      console.log("state changed", prevState, game.stageState);
       stage.didDisappear();
       stage.willAppear();
     }
